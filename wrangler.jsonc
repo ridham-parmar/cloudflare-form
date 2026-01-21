@@ -3,24 +3,5 @@
   // "main": "src/index.js",
   "compatibility_flags": [
     "nodejs_compat"
-  ],
-  "ratelimits": [
-    {
-      "name": "MY_RATE_LIMITER",
-      "namespace_id": "1001",
-      "simple": {
-        "limit": 1,
-        "period": 60
-      }
-    }
-  ],
-  "unsafe": {
-  "bindings": [
-    {
-      "name": "MY_RATE_LIMITER",
-      "type": "ratelimit",
-      "namespace_id": "1001"
-    }
   ]
-}
 }
