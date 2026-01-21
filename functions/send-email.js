@@ -13,7 +13,8 @@ const s3 = new S3Client({
 
 export async function onRequestPost(context) {
   const { request } = context;
-
+  console.log("env ", env);
+  
   const { pathname } = new URL(request.url);
   const { success } = await env.MY_RATE_LIMITER.limit({ key: pathname }); // key can be any string of your choosing
   if (!success) {
