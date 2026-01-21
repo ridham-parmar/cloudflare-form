@@ -1,6 +1,7 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "cloudflare:workers";
+import { WorkerMailer } from "worker-mailer";
 
 const s3 = new S3Client({
   region: env.AWS_REGION,
@@ -42,22 +43,45 @@ export async function onRequestPost(context) {
 
     console.log("signed Url ", signedUrl);
 
-    return new Response(
-      JSON.stringify({
-        message: "Message sent successfully!",
-        data: { name, email, subject, signedUrl },
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return await sendEmail(signedUrl, email);
+
   } catch (error) {
     console.log("Error occured ", error);
-    
+
     return new Response(JSON.stringify({ error: error }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
+}
+
+async function sendEmail(signedUrl, email) {
+  const mailer = await WorkerMailer.connect({
+    host: env.SMTP_HOST,
+    port: parseInt(env.SMTP_PORT),
+    secure: env.SMTP_SECURE === "true", // true for 465
+    credentials: {
+      username: env.SMTP_USER,
+      password: env.SMTP_PASS,
+    },
+    authType: "login", // or "login"
+  });
+
+  await mailer.send({
+    from: { email: env.SMTP_FROM },
+    to: { email: email },
+    subject: "Your Assessment Report is Ready",
+    text: `Your report is ready! Download here: ${signedUrl}`,
+  });
+
+  return new Response(
+    JSON.stringify({
+      message: "Message sent successfully!",
+      data: { email, signedUrl },
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }
