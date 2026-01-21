@@ -1,4 +1,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // "main": "src/index.js",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "ratelimits": [
+    {
+      "name": "MY_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 1,
+        "period": 60
+      }
+    }
+  ]
 }
