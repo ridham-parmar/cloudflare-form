@@ -13,5 +13,14 @@
         "period": 60
       }
     }
+  ],
+  "unsafe": {
+  "bindings": [
+    {
+      "name": "MY_RATE_LIMITER",
+      "type": "ratelimit",
+      "namespace_id": "1001"
+    }
   ]
+}
 }
