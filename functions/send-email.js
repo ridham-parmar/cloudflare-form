@@ -109,8 +109,6 @@ export async function onRequestPost(context) {
       );
     }
 
-    console.log("Form submission:", { name, email, subject, message });
-
     const htmlContent = generatePdfHtml(data);
 
     const pdfResponse = await fetch(
@@ -141,9 +139,20 @@ export async function onRequestPost(context) {
     return await uploadToS3(pdfBuffer, data.userEmail);
 
   } catch (error) {
-    console.log("Error occured ", error);
+    console.error(`Error occurred:`, error);
 
-    return new Response(JSON.stringify({ error: error }), {
+    const errorResponse = {
+      error: {
+        message: error.message || 'An unknown error occurred',
+        type: error.name || 'Error',
+      }
+    };
+
+    if (error.stack) {
+      errorResponse.error.stack = error.stack.split('\n').slice(0, 5).join('\n');
+    }
+
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
@@ -151,60 +160,80 @@ export async function onRequestPost(context) {
 }
 
 async function uploadToS3(pdfBuffer, userEmail) {
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: env.AWS_BUCKET_NAME,
-      Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
-      Body: pdfBuffer,
-      ContentType: "application/pdf",
-      "Content-Disposition": `attachment; filename="Platform-Readiness-Assessment-${userEmail}.pdf"`,
-    })
-  );
-  const signedUrl = await getSignedUrl(
-    s3,
-    new GetObjectCommand({
-      Bucket: env.AWS_BUCKET_NAME,
-      Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
-    }),
-    { expiresIn: 60 } // 1 min
-  );
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: env.AWS_BUCKET_NAME,
+        Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
+        Body: pdfBuffer,
+        ContentType: "application/pdf",
+        "Content-Disposition": `attachment; filename="Platform-Readiness-Assessment-${userEmail}.pdf"`,
+      })
+    );
+        
+    const signedUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: env.AWS_BUCKET_NAME,
+        Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
+      }),
+      { expiresIn: 60 }
+    );
+    
+    return await sendEmail(signedUrl, userEmail);
 
-  console.log("response afer upload----", signedUrl);
-  // return new Response(`Sent mail to user ${userEmail}`, {
-  //   status: 200,
-  // })
-  return await sendEmail(signedUrl, userEmail);
+  } catch (error) {
+    console.error(`S3 upload failed:`, {
+      message: error.message,
+      name: error.name,
+      code: error.Code || error.code,
+      statusCode: error.$metadata?.httpStatusCode
+    });
+    
+    throw new Error(`S3 upload failed: ${error.message}`);
+  }
 }
 
 async function sendEmail(signedUrl, email) {
-  const mailer = await WorkerMailer.connect({
-    host: env.SMTP_HOST,
-    port: parseInt(env.SMTP_PORT),
-    secure: env.SMTP_SECURE === "true", // true for 465
-    credentials: {
-      username: env.SMTP_USER,
-      password: env.SMTP_PASS,
-    },
-    authType: "login", // or "login"
-  });
+  try {    
+    const mailer = await WorkerMailer.connect({
+      host: env.SMTP_HOST,
+      port: parseInt(env.SMTP_PORT),
+      secure: env.SMTP_SECURE === "true",
+      credentials: {
+        username: env.SMTP_USER,
+        password: env.SMTP_PASS,
+      },
+      authType: "login",
+    });
+    
+    await mailer.send({
+      from: { email: env.SMTP_FROM },
+      to: { email: email },
+      subject: "Your Assessment Report is Ready",
+      text: `Your report is ready! Download here: ${signedUrl}`,
+    });
 
-  await mailer.send({
-    from: { email: env.SMTP_FROM },
-    to: { email: email },
-    subject: "Your Assessment Report is Ready",
-    text: `Your report is ready! Download here: ${signedUrl}`,
-  });
-
-  return new Response(
-    JSON.stringify({
-      message: "Message sent successfully!",
-      data: { email, signedUrl },
-    }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+    return new Response(
+      JSON.stringify({
+        message: "Message sent successfully!",
+        data: { email, signedUrl }
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error(`Email sending failed:`, {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      response: error.response
+    });
+    
+    throw new Error(`Email sending failed: ${error.message}`);
+  }
 }
 
 function generatePdfHtml(data) {
