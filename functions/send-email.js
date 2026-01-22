@@ -26,7 +26,7 @@ export async function onRequestPost(context) {
 
     const data = {
       userName: "ridham",
-      userEmail: "ridham.parmar@improwised.com",
+      userEmail: "ridhamparmar511@gmail.com",
       assessmentDate: "2026-01-22T07:09:19.766Z",
       scores: { overallReadiness: 0, twelveFactorScore: 0, doraScore: 0 },
       cncfMaturity: {
@@ -125,7 +125,7 @@ export async function onRequestPost(context) {
       }
     );
     console.log("pdf response ", pdfResponse);
-    
+
     if (!pdfResponse.ok) {
       const errorText = await pdfResponse.text();
       console.error("PDF generation error:", errorText);
@@ -136,24 +136,21 @@ export async function onRequestPost(context) {
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
 
-    return await uploadToS3(pdfBuffer, data.userEmail);
+    const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
 
+    return await sendEmail(signedUrl, data.userEmail);
   } catch (error) {
-    console.error(`Error occurred:`, error);
+    console.error(`Error  from onRequestPost:`, error);
 
     const errorResponse = {
       error: {
-        message: error.message || 'An unknown error occurred',
-        type: error.name || 'Error',
-      }
+        message: error.message || "An unknown error occurred",
+        type: error.name || "Error",
+      },
     };
 
-    if (error.stack) {
-      errorResponse.error.stack = error.stack.split('\n').slice(0, 5).join('\n');
-    }
-
     return new Response(JSON.stringify(errorResponse), {
-      status: 500,
+      status: error.statusCode || 500,
       headers: { "Content-Type": "application/json" },
     });
   }
@@ -170,7 +167,7 @@ async function uploadToS3(pdfBuffer, userEmail) {
         "Content-Disposition": `attachment; filename="Platform-Readiness-Assessment-${userEmail}.pdf"`,
       })
     );
-        
+
     const signedUrl = await getSignedUrl(
       s3,
       new GetObjectCommand({
@@ -179,23 +176,23 @@ async function uploadToS3(pdfBuffer, userEmail) {
       }),
       { expiresIn: 60 }
     );
-    
-    return await sendEmail(signedUrl, userEmail);
 
+    // return new Response(`Sent mail to user ${userEmail}`, {
+    //   status: 200,
+    // });
+    return signedUrl;
   } catch (error) {
-    console.error(`S3 upload failed:`, {
-      message: error.message,
-      name: error.name,
-      code: error.Code || error.code,
-      statusCode: error.$metadata?.httpStatusCode
-    });
-    
-    throw new Error(`S3 upload failed: ${error.message}`);
+    const s3Error = new Error(`S3 upload failed: ${error.message}`);
+    s3Error.name = error.name || "S3Error";
+    s3Error.statusCode = error.$metadata?.httpStatusCode;
+    s3Error.originalError = error;
+
+    throw s3Error;
   }
 }
 
 async function sendEmail(signedUrl, email) {
-  try {    
+  try {
     const mailer = await WorkerMailer.connect({
       host: env.SMTP_HOST,
       port: parseInt(env.SMTP_PORT),
@@ -206,7 +203,7 @@ async function sendEmail(signedUrl, email) {
       },
       authType: "login",
     });
-    
+
     await mailer.send({
       from: { email: env.SMTP_FROM },
       to: { email: email },
@@ -217,7 +214,7 @@ async function sendEmail(signedUrl, email) {
     return new Response(
       JSON.stringify({
         message: "Message sent successfully!",
-        data: { email, signedUrl }
+        data: { email, signedUrl },
       }),
       {
         status: 200,
@@ -225,14 +222,12 @@ async function sendEmail(signedUrl, email) {
       }
     );
   } catch (error) {
-    console.error(`Email sending failed:`, {
-      message: error.message,
-      name: error.name,
-      code: error.code,
-      response: error.response
-    });
-    
-    throw new Error(`Email sending failed: ${error.message}`);
+    const emailError = new Error(`Email sending error: ${error.message}`);
+    emailError.name = error.name || "emailError";
+    emailError.statusCode = error.code || error.statusCode;
+    emailError.originalError = error;
+
+    throw emailError;
   }
 }
 
