@@ -208,7 +208,106 @@ async function sendEmail(signedUrl, email) {
       from: { email: env.SMTP_FROM },
       to: { email: email },
       subject: "Your Assessment Report is Ready",
-      text: `Your report is ready! Download here: ${signedUrl}`,
+      text: `Your Platform Engineering Readiness Assessment report is ready! Download it here: ${signedUrl}. This link is valid for 1 minute only.`,
+      html: `
+      <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .container {
+              background: #ffffff;
+              border-radius: 8px;
+              padding: 30px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              color: #141414;
+              font-size: 24px;
+              margin-bottom: 10px;
+            }
+            .content {
+              margin-bottom: 30px;
+            }
+            .button {
+              display: inline-block;
+              background: #0066cc;
+              color: #ffffff;
+              text-decoration: none;
+              padding: 14px 32px;
+              border-radius: 6px;
+              font-weight: 600;
+              margin: 20px 0;
+            }
+            .button:hover {
+              background: #0052a3;
+            }
+            .warning {
+              background: #fff3cd;
+              border-left: 4px solid #ffc107;
+              padding: 12px;
+              margin: 20px 0;
+              border-radius: 4px;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #eee;
+              font-size: 14px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Your Platform Engineering Readiness Assessment Report</h1>
+            </div>
+            
+            <div class="content">
+              <p>Hello,</p>
+              
+              <p>Thank you for completing the Platform Engineering Readiness Assessment. Your comprehensive report has been generated and is ready for download.</p>
+              
+              <p>This report includes:</p>
+              <ul>
+                <li>Your current platform maturity score</li>
+                <li>Analysis across all assessment categories</li>
+                <li>Personalized recommendations for improvement</li>
+              </ul>
+              
+              <div style="text-align: center;">
+                <a href="${signedUrl}" class="button">Download Your Report</a>
+              </div>
+              
+              <div class="warning">
+                <strong>⏱️ Important:</strong> This download link is valid for <strong>1 minute only</strong> for security purposes. Please download your report immediately.
+              </div>
+              
+              <p>If the link expires, you can request a new report by completing the assessment again on our website.</p>
+            </div>
+            
+            <div class="footer">
+              <p>Need help with your platform engineering journey?</p>
+              <p>Learn more about our <a href="https://www.improwised.com/services/platform-engineering/" style="color: #0066cc;">Platform Engineering services</a> or visit us at <a href="https://www.improwised.com" style="color: #0066cc;">improwised.com</a></p>
+              <p style="margin-top: 20px; font-size: 12px; color: #999;">This is an automated email. Please do not reply to this message.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
     });
 
     return new Response(
