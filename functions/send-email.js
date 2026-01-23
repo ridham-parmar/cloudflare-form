@@ -6,6 +6,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "cloudflare:workers";
 import { WorkerMailer } from "worker-mailer";
+const nodemailer = require("nodemailer");
 
 const s3 = new S3Client({
   region: env.AWS_REGION,
