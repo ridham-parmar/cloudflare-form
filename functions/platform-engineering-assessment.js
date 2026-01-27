@@ -6,6 +6,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "cloudflare:workers";
 import { WorkerMailer } from "worker-mailer";
+import { Buffer } from "node:buffer";
 
 const s3 = new S3Client({
   region: env.AWS_REGION,
@@ -135,13 +136,13 @@ export async function onRequestPost(context) {
     }
     
     const arrayBuffer = await pdfResponse.arrayBuffer();
-    // const pdfBuffer = await Buffer.from(arrayBuffer)
-    console.log("type of buffer ", typeof arrayBuffer);
-    console.log("pdfbuffer---------", arrayBuffer);
+    const pdfBuffer = await Buffer.from(arrayBuffer)
+    console.log("type of buffer ", typeof pdfBuffer);
+    console.log("pdfbuffer---------", pdfBuffer);
     
     // const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
 
-    return await sendEmail(arrayBuffer, data.userEmail);
+    return await sendEmail(pdfBuffer, data.userEmail);
   } catch (error) {
     console.error(`Error  from onRequestPost:`, error);
 
