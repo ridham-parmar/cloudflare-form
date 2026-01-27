@@ -135,14 +135,13 @@ export async function onRequestPost(context) {
     }
     
     const arrayBuffer = await pdfResponse.arrayBuffer();
-    const pdfBuffer = await Buffer.from(arrayBuffer)
-    console.log("type of buffer ", typeof pdfBuffer);
-    console.log("pdfbuffer---------", pdfBuffer);
-    
+    // const pdfBuffer = await Buffer.from(arrayBuffer)
+    console.log("type of buffer ", typeof arrayBuffer);
+    console.log("pdfbuffer---------", arrayBuffer);
     
     // const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
 
-    return await sendEmail(pdfBuffer, data.userEmail);
+    return await sendEmail(arrayBuffer, data.userEmail);
   } catch (error) {
     console.error(`Error  from onRequestPost:`, error);
 
