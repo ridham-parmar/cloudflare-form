@@ -136,9 +136,9 @@ export async function onRequestPost(context) {
 
     const pdfBuffer = await pdfResponse.arrayBuffer();
 
-    const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
+    // const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
 
-    return await sendEmail(signedUrl, data.userEmail);
+    return await sendEmail(pdfBuffer, data.userEmail);
   } catch (error) {
     console.error(`Error  from onRequestPost:`, error);
 
@@ -156,40 +156,40 @@ export async function onRequestPost(context) {
   }
 }
 
-async function uploadToS3(pdfBuffer, userEmail) {
-  try {
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: env.AWS_BUCKET_NAME,
-        Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
-        Body: pdfBuffer,
-        ContentType: "application/pdf",
-        "Content-Disposition": `attachment; filename="Platform-Readiness-Assessment-${userEmail}.pdf"`,
-      })
-    );
+// async function uploadToS3(pdfBuffer, userEmail) {
+//   try {
+//     await s3.send(
+//       new PutObjectCommand({
+//         Bucket: env.AWS_BUCKET_NAME,
+//         Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
+//         Body: pdfBuffer,
+//         ContentType: "application/pdf",
+//         "Content-Disposition": `attachment; filename="Platform-Readiness-Assessment-${userEmail}.pdf"`,
+//       })
+//     );
 
-    const signedUrl = await getSignedUrl(
-      s3,
-      new GetObjectCommand({
-        Bucket: env.AWS_BUCKET_NAME,
-        Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
-      }),
-      { expiresIn: 60 }
-    );
+//     const signedUrl = await getSignedUrl(
+//       s3,
+//       new GetObjectCommand({
+//         Bucket: env.AWS_BUCKET_NAME,
+//         Key: `Platform-Readiness-Assessment-${userEmail}.pdf`,
+//       }),
+//       { expiresIn: 60 }
+//     );
 
-    // return new Response(`Sent mail to user ${userEmail}`, {
-    //   status: 200,
-    // });
-    return signedUrl;
-  } catch (error) {
-    const s3Error = new Error(`S3 upload failed: ${error.message}`);
-    s3Error.name = error.name || "S3Error";
-    s3Error.statusCode = error.$metadata?.httpStatusCode;
-    s3Error.originalError = error;
+//     // return new Response(`Sent mail to user ${userEmail}`, {
+//     //   status: 200,
+//     // });
+//     return signedUrl;
+//   } catch (error) {
+//     const s3Error = new Error(`S3 upload failed: ${error.message}`);
+//     s3Error.name = error.name || "S3Error";
+//     s3Error.statusCode = error.$metadata?.httpStatusCode;
+//     s3Error.originalError = error;
 
-    throw s3Error;
-  }
-}
+//     throw s3Error;
+//   }
+// }
 
 async function sendEmail(signedUrl, email) {
   try {
@@ -208,7 +208,6 @@ async function sendEmail(signedUrl, email) {
       from: { email: env.SMTP_FROM },
       to: { email: email },
       subject: "Your Assessment Report is Ready",
-      text: `Your Platform Engineering Readiness Assessment report is ready! Download it here: ${signedUrl}. This link is valid for 1 minute only.`,
       html: `
       <!DOCTYPE html>
         <html lang="en">
@@ -241,26 +240,6 @@ async function sendEmail(signedUrl, email) {
             .content {
               margin-bottom: 30px;
             }
-            .button {
-              display: inline-block;
-              background: #0066cc;
-              color: #ffffff;
-              text-decoration: none;
-              padding: 14px 32px;
-              border-radius: 6px;
-              font-weight: 600;
-              margin: 20px 0;
-            }
-            .button:hover {
-              background: #0052a3;
-            }
-            .warning {
-              background: #fff3cd;
-              border-left: 4px solid #ffc107;
-              padding: 12px;
-              margin: 20px 0;
-              border-radius: 4px;
-            }
             .footer {
               margin-top: 30px;
               padding-top: 20px;
@@ -279,7 +258,7 @@ async function sendEmail(signedUrl, email) {
             <div class="content">
               <p>Hello,</p>
               
-              <p>Thank you for completing the Platform Engineering Readiness Assessment. Your comprehensive report has been generated and is ready for download.</p>
+              <p>Thank you for completing the Platform Engineering Readiness Assessment. Your comprehensive report has been generated and it is attached to this email.</p>
               
               <p>This report includes:</p>
               <ul>
@@ -287,18 +266,12 @@ async function sendEmail(signedUrl, email) {
                 <li>Analysis across all assessment categories</li>
                 <li>Personalized recommendations for improvement</li>
               </ul>
-              
-              <div style="text-align: center;">
-                <a href="${signedUrl}" class="button">Download Your Report</a>
-              </div>
-              
-              <div class="warning">
-                <strong>⏱️ Important:</strong> This download link is valid for <strong>1 minute only</strong> for security purposes. Please download your report immediately.
-              </div>
-              
-              <p>If the link expires, you can request a new report by completing the assessment again on our website.</p>
+            
             </div>
             
+            <p>Best regards,<br>
+            <strong>Improwised Technologies Pvt. Ltd.</strong></p>
+
             <div class="footer">
               <p>Need help with your platform engineering journey?</p>
               <p>Learn more about our <a href="https://www.improwised.com/services/platform-engineering/" style="color: #0066cc;">Platform Engineering services</a> or visit us at <a href="https://www.improwised.com" style="color: #0066cc;">improwised.com</a></p>
@@ -308,6 +281,12 @@ async function sendEmail(signedUrl, email) {
         </body>
         </html>
       `,
+      attachments: [
+        {
+          filename: `Platform_engineering_assessment_${email.replace(/\s+/g, '_')}.pdf`,
+          content: pdfBuffer,
+        },
+      ],
     });
 
     return new Response(
@@ -327,6 +306,54 @@ async function sendEmail(signedUrl, email) {
     emailError.originalError = error;
 
     throw emailError;
+  }
+}
+
+async function createLead(name, email) {
+  try {
+    const res = await fetch(`${env.CRM_HOST}/api/resource/CRM Lead`, {
+      method: "POST",
+      headers: {
+        Authorization: `token ${env.CRM_API_KEY}:${env.CRM_API_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        first_name: name,
+        email: email,
+        source: "Website",
+        status: "New",
+      }),
+    });
+
+    const lead = await res.json()
+    console.log(lead);
+    
+    if (lead.exc_type) {
+      console.error("Lead generation failed:", lead.exception);
+      throw new Error(
+        `${lead.exception || lead.exc_type}`
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        message: "Message sent successfully!",
+        data: { email },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.log("crm error ", error);
+    const leadGenerationError = new Error(
+      `Lead generation failed: ${error.message}`
+    );
+    leadGenerationError.name = error.name || "leadGenerationError";
+    leadGenerationError.statusCode = error.code || error.statusCode || 500;
+    leadGenerationError.originalError = error;
+
+    throw leadGenerationError;
   }
 }
 
