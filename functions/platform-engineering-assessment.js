@@ -133,9 +133,13 @@ export async function onRequestPost(context) {
         `PDF generation failed: ${pdfResponse.statusText} - ${errorText}`
       );
     }
-
-    const pdfBuffer = await pdfResponse.arrayBuffer();
-
+    
+    const arrayBuffer = await pdfResponse.arrayBuffer();
+    const pdfBuffer = await Buffer.from(arrayBuffer)
+    console.log("type of buffer ", typeof pdfBuffer);
+    console.log("pdfbuffer---------", pdfBuffer);
+    
+    
     // const signedUrl = await uploadToS3(pdfBuffer, data.userEmail);
 
     return await sendEmail(pdfBuffer, data.userEmail);
