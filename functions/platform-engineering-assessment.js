@@ -191,7 +191,7 @@ export async function onRequestPost(context) {
 //   }
 // }
 
-async function sendEmail(signedUrl, email) {
+async function sendEmail(pdfBuffer, email) {
   try {
     const mailer = await WorkerMailer.connect({
       host: env.SMTP_HOST,
@@ -292,7 +292,7 @@ async function sendEmail(signedUrl, email) {
     return new Response(
       JSON.stringify({
         message: "Message sent successfully!",
-        data: { email, signedUrl },
+        data: { email },
       }),
       {
         status: 200,
