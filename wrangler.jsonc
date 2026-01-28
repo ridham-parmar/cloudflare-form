@@ -2,6 +2,6 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   // "main": "src/index.js",
   "compatibility_flags": [
-    "nodejs_compat"
+    "nodejs_compat_v2"
   ]
 }
