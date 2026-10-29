@@ -14,8 +14,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.972.0",
     "@aws-sdk/s3-request-presigner": "^3.972.0",
-    "astro": "^5.16.11",
+    "astro": "^7.4.4",
     "worker-mailer": "^1.2.1",
-    "wrangler": "^4.59.2"
+    "wrangler": "^4.155.0"
   }
 }
